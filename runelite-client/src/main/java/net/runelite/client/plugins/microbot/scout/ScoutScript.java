@@ -6,6 +6,8 @@ import net.runelite.api.coords.WorldPoint;
 
 import net.runelite.api.kit.KitType;
 import net.runelite.client.account.SessionManager;
+import net.runelite.client.config.ConfigGroup;
+import net.runelite.client.config.ConfigProfile;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.util.discord.Rs2Discord;
@@ -15,7 +17,6 @@ import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.security.Login;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import net.runelite.client.ui.ClientUI;
-import net.runelite.client.util.AsyncBufferedImage;
 
 
 import javax.inject.Inject;
@@ -146,9 +147,9 @@ public class ScoutScript extends Script {
             Microbot.log("Can't log in. Not in login screen");
             return;
         }
-        String username = Microbot.gets
-        
-        new Login(Login.getNextWorld(Rs2Player.isMember()));
+        String username = Login.activeProfile.getName();
+        String password = Login.activeProfile.getPassword();
+        new Login(username, password, Login.getNextWorld(Rs2Player.isMember()));
 
     }
 
