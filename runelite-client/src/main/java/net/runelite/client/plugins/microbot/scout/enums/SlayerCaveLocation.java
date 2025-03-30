@@ -6,7 +6,7 @@ import lombok.RequiredArgsConstructor;
 import net.runelite.api.coords.WorldPoint;
 
 @RequiredArgsConstructor
-public enum WildernessLocation {
+public enum SlayerCaveLocation {
     ABYSSAL_DEMONS("Abyssal Demons", new WorldPoint(3340, 10162, 0)),
     BLACK_DRAGONS("Black Dragons", new WorldPoint(3363, 10157, 0)),
     GREEN_DRAGONS_NORTH("North Green Dragons", new WorldPoint(3401, 10123, 0)),
@@ -30,3 +30,4 @@ public enum WildernessLocation {
     }
 
 }
+

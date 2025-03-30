@@ -33,8 +33,8 @@ public class ScoutPlugin extends Plugin {
 
     @Override
     protected void startUp() throws Exception {
+        if (config.enableDiscordBot()) { discordBot.start();}
         scoutScript.run(config);
-        checkDiscordBotState();
     }
 
     @Override
@@ -54,6 +54,7 @@ public class ScoutPlugin extends Plugin {
         // Check if Discord bot state needs to change
         checkDiscordBotState();
     }
+
 
     private void checkDiscordBotState() {
         boolean shouldBeEnabled = config.enableDiscordBot();

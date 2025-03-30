@@ -62,8 +62,9 @@ public interface ScoutConfig extends Config {
 
     @ConfigItem(keyName = "enableDiscordBot", name = "Enable Discord Bot", description = "Enable Discord bot integration", position = 10, section = scoutSettings)
     default boolean enableDiscordBot() {
-        return false;
+        return true;
     }
     @ConfigItem(keyName = "discordBotToken", name = "Bot token", description = "Input your discord bot token", position = 11, section = scoutSettings)
     default String botToken() { return ""; }
+
 }

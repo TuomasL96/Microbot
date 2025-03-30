@@ -4,10 +4,6 @@ import net.runelite.api.*;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 
-import net.runelite.api.kit.KitType;
-import net.runelite.client.account.SessionManager;
-import net.runelite.client.config.ConfigGroup;
-import net.runelite.client.config.ConfigProfile;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.util.discord.Rs2Discord;
@@ -15,6 +11,7 @@ import net.runelite.client.plugins.microbot.util.discord.models.DiscordEmbed;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.security.Login;
+import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import net.runelite.client.ui.ClientUI;
 
@@ -24,8 +21,7 @@ import java.awt.*;
 
 import java.util.*;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 import static net.runelite.client.plugins.microbot.util.Global.sleep;
@@ -108,7 +104,6 @@ public class ScoutScript extends Script {
 
     public void hopWithDelay(Integer world) {
         lastHopTime = currentTime;
-        sleep(61, 93);
         Microbot.getClient().openWorldHopper();
         Rs2Widget.hasWidget("Current world - " + Rs2Player.getWorld());
         sleep(61, 93);
@@ -164,6 +159,40 @@ public class ScoutScript extends Script {
         sleep(61, 93);
         ClientUI.getClient().setEnabled(true);
         scoutedCannons.clear();
+    }
+
+    /**
+     * Walks to a series of detour locations in order before proceeding to the final destination.
+     *
+     * @param finalDestination   The final location the player should reach.
+     * @param detourDestinations An array of detour locations that the player must visit in order.
+     */
+    public void walkToLocationWithDetours(WorldPoint finalDestination, WorldPoint... detourDestinations) {
+        walkThroughDetours(detourDestinations, 0, () -> {
+            walkToAndThen(finalDestination, () -> Microbot.log("Arrived at final destination!"));
+        });
+    }
+
+    private void walkThroughDetours(WorldPoint[] detours, int index, Runnable onComplete) {
+        if (index >= detours.length) {
+            onComplete.run();
+            return;
+        }
+
+        walkToAndThen(detours[index], () -> {
+            Microbot.log("Arrived at detour: " + detours[index]);
+            walkThroughDetours(detours, index + 1, onComplete);
+        });
+    }
+
+    private static void walkToAndThen(WorldPoint target, Runnable callback) {
+        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+        scheduler.scheduleAtFixedRate(() -> {
+            if (Rs2Walker.walkTo(target)) {
+                callback.run();
+                scheduler.shutdown();
+            }
+        }, 0, 600, TimeUnit.MILLISECONDS);
     }
 
     private void checkCannons() {
@@ -230,8 +259,7 @@ public class ScoutScript extends Script {
     public void sendCannonScoutMessage(Integer world, Boolean firing, WorldPoint location) {
         try {
             boolean cannonFiring = firing;
-            WorldPoint cannonLocation = location;
-            String closestLocation = WildernessLocationFinder.getLocationName(cannonLocation);
+            String closestLocation = WildernessLocationFinder.getLocationName(location);
             DiscordEmbed embed = new DiscordEmbed();
             embed.setTitle(String.format("World: %d\nActive: %s",
                     world,

@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.scout;
 
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.InteractionContextType;
@@ -13,6 +14,8 @@ import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.requests.restaction.CommandListUpdateAction;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.scout.enums.LowCombatDetourLocations;
+import net.runelite.client.plugins.microbot.scout.enums.SlayerCaveScoutLocation;
 
 import javax.inject.Inject;
 
@@ -50,6 +53,10 @@ public class ScoutDiscordBot {
 
 
             jda.updateCommands()
+                    .addCommands(
+                            Commands.slash("walk", "Walk to destination")
+                                    .setContexts(InteractionContextType.GUILD)
+                                    .setDefaultPermissions(DefaultMemberPermissions.DISABLED))
                     .addCommands(
                             Commands.slash("hop", "Hop to world")
                                     .addOptions(new OptionData(OptionType.INTEGER, "world", "The world to hop to")
@@ -93,6 +100,9 @@ public class ScoutDiscordBot {
                 case "hop":
                     hopToWorld(event);
                     break;
+                case "walk":
+                    walkTo(event, true);
+                    break;
                 default:
                     event.reply("I can't handle that command right now :(").setEphemeral(true).queue();
             }
@@ -100,20 +110,29 @@ public class ScoutDiscordBot {
     }
 
     public void hopToWorld(SlashCommandInteractionEvent event) {
-        int worldNumber = event.getOption("world", 301, OptionMapping::getAsInt);
-        scoutScript.hopWithDelay(worldNumber);
+        int worldNumber = event.getOption("world", 302, OptionMapping::getAsInt);
         event.reply("Hopping to world: " + worldNumber).queue();
+        scoutScript.hopWithDelay(worldNumber);
     }
 
     public void startBot(SlashCommandInteractionEvent event) {
-        scoutScript.loginPlayer();
         event.reply("Logging in").queue();
+        scoutScript.loginPlayer();
+    }
+
+    public void walkTo(SlashCommandInteractionEvent event, Boolean safely) {
+        scoutScript.walkToLocationWithDetours(
+                SlayerCaveScoutLocation.BLACK_DEMONS_SCOUT.getWorldPoint(),
+                LowCombatDetourLocations.ANKOU_DETOUR.getWorldPoint(),
+                LowCombatDetourLocations.GREEN_DRAGON_DETOUR.getWorldPoint()
+        );
+        event.reply("Trying to walk to destination").queue();
     }
 
 
     public void stopBot(SlashCommandInteractionEvent event) {
-        scoutScript.logoutPlayer();
         event.reply("Logging out").queue();
+        scoutScript.logoutPlayer();
     }
 
     public void shutdown() {
