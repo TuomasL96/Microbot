@@ -161,6 +161,16 @@ public class ScoutScript extends Script {
         scoutedCannons.clear();
     }
 
+    public void walkPath(PathRoute path, Boolean safeMode) {
+        if (safeMode && path.getDetourPoints().length > 0) {
+            walkToLocationWithDetours(path.getFinalDestinationPoint(), path.getDetourPoints());
+        } else {
+            walkToAndThen(path.getFinalDestinationPoint(), () ->
+                    Microbot.log("Arrived at final destination!")
+            );
+        }
+    }
+
     /**
      * Walks to a series of detour locations in order before proceeding to the final destination.
      *

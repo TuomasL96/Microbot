@@ -64,7 +64,16 @@ public interface ScoutConfig extends Config {
     default boolean enableDiscordBot() {
         return true;
     }
-    @ConfigItem(keyName = "discordBotToken", name = "Bot token", description = "Input your discord bot token", position = 11, section = scoutSettings)
+
+    @ConfigItem(keyName = "safePath", name = "Avoid NPCs", description = "Take a safe path to locations when auto walking", position = 11, section = scoutSettings)
+    default boolean safePath() {
+        return true;
+    }
+
+    @ConfigItem(keyName = "discordBotToken", name = "Bot token", description = "Input your discord bot token", position = 12, section = scoutSettings)
     default String botToken() { return ""; }
+
+    @ConfigItem(keyName = "guildId", name = "Guild Id", description = "Input your Guild Id", position = 13, section = scoutSettings)
+    default String guildId() { return ""; }
 
 }

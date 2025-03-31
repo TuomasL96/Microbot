@@ -147,7 +147,7 @@ public class EquipmentFinder {
         return imagePaths;
     }
 
-    // Method to create a combined equipment image and return its path
+
     public String createCombinedEquipmentImagePath() throws IOException {
         if (equipmentImages.isEmpty()) {
             return null;
@@ -159,7 +159,7 @@ public class EquipmentFinder {
         int padding = 2;
         int totalImages = equipmentImages.size();
 
-        // Create a new image with enough space for all equipment items in a row
+
         BufferedImage combined = new BufferedImage(
                 (imageWidth + padding) * totalImages - padding,
                 imageHeight,

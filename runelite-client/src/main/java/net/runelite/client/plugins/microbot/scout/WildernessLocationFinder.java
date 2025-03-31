@@ -28,6 +28,7 @@ public class WildernessLocationFinder {
             SlayerCaveLocation.GREATER_NECHRYAELS
     );
 
+
     /**
      * Finds the closest wilderness location to a given WorldPoint
      *
