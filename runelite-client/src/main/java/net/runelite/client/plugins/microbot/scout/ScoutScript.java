@@ -104,6 +104,7 @@ public class ScoutScript extends Script {
 
     public void hopWithDelay(Integer world) {
         lastHopTime = currentTime;
+        sleep(61, 93);
         Microbot.getClient().openWorldHopper();
         Rs2Widget.hasWidget("Current world - " + Rs2Player.getWorld());
         sleep(61, 93);
