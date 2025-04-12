@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.ItemContainerChanged;
+import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.bank.BankPlugin;
@@ -58,11 +59,19 @@ public class Rs2Bank {
     public static final int BANK_ITEM_HEIGHT = 32;
     public static final int BANK_ITEM_Y_PADDING = 4;
     public static final int BANK_ITEMS_PER_ROW = 8;
-    private static final int X_AMOUNT_VARBIT = 3960;
-    private static final int SELECTED_OPTION_VARBIT = 6590;
-    private static final int HANDLE_X_SET = 5;
-    private static final int HANDLE_X_UNSET = 6;
-    private static final int HANDLE_ALL = 7;
+    private static final int X_AMOUNT_VARBIT = VarbitID.BANK_REQUESTEDQUANTITY;
+    private static final int SELECTED_OPTION_VARBIT = VarbitID.BANK_QUANTITY_TYPE;
+    
+    // BANK actions
+    private static final int BANK_HANDLE_X_SET = 4;
+    private static final int BANK_HANDLE_X_UNSET = 5;
+    private static final int BANK_HANDLE_ALL = 6;
+
+    // INVENTORY actions (e.g., for deposit)
+    private static final int INVENTORY_HANDLE_X_SET = 6;
+    private static final int INVENTORY_HANDLE_X_UNSET = 7;
+    private static final int INVENTORY_HANDLE_ALL = 8;
+    
     private static final int WITHDRAW_AS_NOTE_VARBIT = 3958;
     public static List<Rs2ItemModel> bankItems = new ArrayList<Rs2ItemModel>();
     // Used to synchronize calls
@@ -88,7 +97,6 @@ public class Rs2Bank {
         Rectangle itemBoundingBox = null;
 
         if (container == BANK_INVENTORY_ITEM_CONTAINER) {
-            identifier = identifier + 1;
             itemBoundingBox = Rs2Inventory.itemBounds(rs2Item);
         }
         if (container == BANK_ITEM_CONTAINER) {
@@ -415,9 +423,9 @@ public class Rs2Bank {
         container = BANK_INVENTORY_ITEM_CONTAINER;
 
         if (Microbot.getVarbitValue(SELECTED_OPTION_VARBIT) == 0) {
-            invokeMenu(1, rs2Item);
-        } else {
             invokeMenu(2, rs2Item);
+        } else {
+            invokeMenu(3, rs2Item);
         }
     }
 
@@ -499,17 +507,39 @@ public class Rs2Bank {
      */
     private static boolean handleAmount(Rs2ItemModel rs2Item, int amount, boolean safe) {
         int inventorySize = Rs2Inventory.size();
+
+        boolean isInventory = container == BANK_INVENTORY_ITEM_CONTAINER;
+        int handleXSet = isInventory ? INVENTORY_HANDLE_X_SET : BANK_HANDLE_X_SET;
+        int handleXUnset = isInventory ? INVENTORY_HANDLE_X_UNSET : BANK_HANDLE_X_UNSET;
+        
+        if (!isInventory && Microbot.getVarbitValue(SELECTED_OPTION_VARBIT) == 4) {
+            handleXSet++;
+            handleXUnset++;
+        }
+        
+        if (Microbot.getVarbitValue(SELECTED_OPTION_VARBIT) == 3) {
+            handleXSet = isInventory ? 2 : 1;
+        }
+        
         if (Microbot.getVarbitValue(X_AMOUNT_VARBIT) == amount) {
-            invokeMenu(HANDLE_X_SET, rs2Item);
+            invokeMenu(handleXSet, rs2Item);
 
             if (safe)
                 return sleepUntilTrue(() -> inventorySize != Rs2Inventory.size(), 100, 2500);
 
             return true;
         } else {
-            invokeMenu(HANDLE_X_UNSET, rs2Item);
+            invokeMenu(handleXUnset, rs2Item);
 
-            sleep(Rs2Random.randomGaussian(1100,200));
+             boolean foundEnterAmount = sleepUntil(() -> {
+                Widget widget = Rs2Widget.getWidget(162, 42);
+                if (widget == null) return false;
+                return widget.getText().equalsIgnoreCase("Enter amount:");
+            }, 5000);
+            
+            if (!foundEnterAmount) return false;
+            
+            Rs2Random.waitEx(1200, 100);
             Rs2Keyboard.typeString(String.valueOf(amount));
             Rs2Keyboard.enter();
             sleepUntil(() -> Rs2Inventory.hasItem(rs2Item.id), 2500);
@@ -566,7 +596,11 @@ public class Rs2Bank {
         if (!Rs2Inventory.hasItem(rs2Item.id)) return false;
         container = BANK_INVENTORY_ITEM_CONTAINER;
 
-        invokeMenu(HANDLE_ALL, rs2Item);
+        if (Microbot.getVarbitValue(SELECTED_OPTION_VARBIT) == 4) {
+            invokeMenu(2, rs2Item);
+        } else {
+            invokeMenu(INVENTORY_HANDLE_ALL, rs2Item);
+        }
         return true;
     }
 
@@ -806,7 +840,7 @@ public class Rs2Bank {
         if (Rs2Inventory.isFull()) return;
         container = BANK_ITEM_CONTAINER;
         
-        invokeMenu(8, rs2Item);
+        invokeMenu(7, rs2Item);
     }
 
     /**
@@ -912,7 +946,7 @@ public class Rs2Bank {
      * @param amount amount to withdraw
      * @param exact  exact search based on equalsIgnoreCase
      */
-    private static boolean withdrawX(String name, int amount, boolean exact) {
+    public static boolean withdrawX(String name, int amount, boolean exact) {
         return withdrawXItem(findBankItem(name, exact), amount);
     }
 
@@ -939,7 +973,11 @@ public class Rs2Bank {
         if (Rs2Inventory.isFull()) return false;
         container = BANK_ITEM_CONTAINER;
 
-        invokeMenu(HANDLE_ALL, rs2Item);
+        if (Microbot.getVarbitValue(SELECTED_OPTION_VARBIT) == 4) {
+            invokeMenu(1, rs2Item);
+        } else {
+            invokeMenu(BANK_HANDLE_ALL, rs2Item);
+        }
         return true;
     }
 
@@ -999,7 +1037,7 @@ public class Rs2Bank {
         if (rs2Item == null) return;
         container = BANK_INVENTORY_ITEM_CONTAINER;
 
-        invokeMenu(8, rs2Item);
+        invokeMenu(9, rs2Item);
     }
 
     /**
@@ -1216,7 +1254,7 @@ public class Rs2Bank {
         if (rs2Item == null) return;
         container = BANK_INVENTORY_ITEM_CONTAINER;
 
-        invokeMenu(8, rs2Item);
+        invokeMenu(9, rs2Item);
     }
 
     /**
@@ -1349,7 +1387,7 @@ public class Rs2Bank {
         }
 
         // Calculate paths to all banks and find the shortest
-        BankLocation shortestPathBank = findBankWithShortestPath(worldPoint, accessibleBanks);
+        BankLocation shortestPathBank = findNearestBankByDistance(worldPoint, accessibleBanks);
         if (shortestPathBank != null) {
             Microbot.log("Found nearest bank: " + shortestPathBank.name() + " (shortest path)");
             return shortestPathBank;
@@ -1421,20 +1459,42 @@ public class Rs2Bank {
      * @param banks List of banks to check
      * @return The bank with the shortest path, or null if none found
      */
-    private static BankLocation findBankWithShortestPath(WorldPoint worldPoint, List<BankLocation> banks) {
+    private static BankLocation findNearestBankByDistance(WorldPoint worldPoint, List<BankLocation> banks) {
         BankLocation bestBank = null;
         int shortestPath = Integer.MAX_VALUE;
 
+        /**
+         * Handle Exception for Corsair Cove
+         */
+        var corsaireCoveBank = handleCorsairCoveException(banks);
+
+        if (corsaireCoveBank != null) {
+            return corsaireCoveBank;
+        }
+
+
         for (BankLocation bank : banks) {
-            int pathLength = Rs2Walker.getTotalTiles(worldPoint, bank.getWorldPoint());
-            if (pathLength < shortestPath) {
-                shortestPath = pathLength;
+            int closestDistance = Rs2WorldPoint.quickDistance(bank.getWorldPoint(), worldPoint);
+            if (closestDistance < shortestPath) {
+                shortestPath = closestDistance;
                 bestBank = bank;
             }
         }
 
         return bestBank;
     }
+
+    private static BankLocation handleCorsairCoveException(List<BankLocation> banks) {
+        int[] corsaireCoveCaveRegion = new int[] {7564, 7820, 8076, 8332, 7821, 8077};
+
+        for (int regionId: corsaireCoveCaveRegion) {
+            if (Rs2Player.getWorldLocation().getRegionID() == regionId && banks.contains(BankLocation.CORSAIR_COVE)) {
+                return BankLocation.CORSAIR_COVE;
+            }
+        }
+        return null;
+    }
+
     /**
      * Walks to the closest bank using the nearest bank location.
      * Toggles run energy if the player is not already running.
@@ -1800,7 +1860,9 @@ public class Rs2Bank {
                 if (itemsToNotSell.stream().anyMatch(x -> x.trim().equalsIgnoreCase(lootTrackerItem.getName())))
                     continue;
                 int itemId = lootTrackerItem.getId();
-                ItemComposition itemComposition = Microbot.getClientThread().runOnClientThread(() -> Microbot.getClient().getItemDefinition(lootTrackerItem.getId()));
+                ItemComposition itemComposition = Microbot.getClientThread().runOnClientThreadOptional(() ->
+                        Microbot.getClient().getItemDefinition(lootTrackerItem.getId())).orElse(null);
+                if (itemComposition == null) return false;
                 if (Arrays.stream(itemComposition.getInventoryActions()).anyMatch(x -> x != null && x.equalsIgnoreCase("eat")))
                     continue;
                 final boolean isNoted = itemComposition.getNote() == 799;
@@ -1808,7 +1870,11 @@ public class Rs2Bank {
 
                 if (isNoted) {
                     final int unnotedItemId = lootTrackerItem.getId() - 1; //get the unnoted id of the item
-                    itemComposition = Microbot.getClientThread().runOnClientThread(() -> Microbot.getClient().getItemDefinition(unnotedItemId));
+                    itemComposition = Microbot.getClientThread().runOnClientThreadOptional(() ->
+                            Microbot.getClient().getItemDefinition(unnotedItemId)).orElse(null);
+                    if (itemComposition == null) {
+                        return false;
+                    }
                     if (!itemComposition.isTradeable()) continue;
                     itemId = unnotedItemId;
                 }
@@ -1825,10 +1891,10 @@ public class Rs2Bank {
 
     private static Widget getBankSizeWidget() {
 
-        return Microbot.getClientThread().runOnClientThread(() -> {
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
             Widget bankContainerWidget = Microbot.getClient().getWidget(ComponentID.BANK_ITEM_COUNT_TOP);
             return bankContainerWidget;
-        });
+        }).orElse(null);
     }
 
     /**
@@ -1894,14 +1960,14 @@ public class Rs2Bank {
      * @return A list of bank tab widgets, or null if the bank tab container widget is not found.
      */
     public static List<Widget> getTabs() {
-        return Microbot.getClientThread().runOnClientThread(() -> {
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
             Widget bankContainerWidget = Microbot.getClient().getWidget(ComponentID.BANK_TAB_CONTAINER);
             if (bankContainerWidget != null) {
                 // get children and filter out the tabs that don't have the Action Collapse tab
                 return Arrays.asList(bankContainerWidget.getDynamicChildren());
             }
             return null;
-        });
+        }).orElse(new ArrayList<>());
     }
 
     /**
@@ -1914,14 +1980,14 @@ public class Rs2Bank {
      * @return A list of item widgets in the bank container, or null if the bank container widget is not found.
      */
     public static List<Widget> getItems() {
-        return Microbot.getClientThread().runOnClientThread(() -> {
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
             Widget bankContainerWidget = Microbot.getClient().getWidget(BANK_ITEM_CONTAINER);
             if (bankContainerWidget != null) {
                 // Get children and filter out the tabs that don't have the Action Collapse tab
                 return Arrays.asList(bankContainerWidget.getDynamicChildren());
             }
             return null;
-        });
+        }).orElse(new ArrayList<>());
     }
 
     /**

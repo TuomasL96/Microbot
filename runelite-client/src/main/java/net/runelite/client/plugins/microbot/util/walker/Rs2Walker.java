@@ -294,6 +294,12 @@ public class Rs2Walker {
                     System.out.println("break out of door");
                     break;
                 }
+                
+                doorOrTransportResult = handleRockfall(path, i);
+                if (doorOrTransportResult) {
+                    System.out.println("break out of rockfall");
+                    break;
+                }
 
                 if (!Microbot.getClient().getTopLevelWorldView().isInstance()) {
                     doorOrTransportResult = handleTransports(path, i);
@@ -743,6 +749,49 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
                 Microbot.getClient().getTopLevelWorldView().getPlane());
 
         return worldPoint.distanceTo(Microbot.getClient().getLocalPlayer().getWorldLocation());
+    }
+    
+    private static boolean handleRockfall(List<WorldPoint> path, int index) {
+        if (ShortestPathPlugin.getPathfinder() == null) return false;
+
+        if (index == path.size() - 1) return false;
+        
+        // If we are in instance, ignore checking RegionID
+        if(Microbot.getClient().getTopLevelWorldView().isInstance()) return false;
+        
+        // If we are not inside of the Motherloade mine, ignore the following logic
+        if (Rs2Player.getWorldLocation().getRegionID() != 14936) return false;
+        
+        // We kill the path if no pickaxe is found to avoid walking around like an idiot
+        if (!Rs2Inventory.hasItem("pickaxe")) {
+            if (!Rs2Equipment.isWearing("pickaxe")) {
+                Microbot.log("Unable to find pickaxe to mine rockfall");
+                setTarget(null);
+                return false;
+            }
+        }
+        
+        // Check current index & next index for rockfall
+        for (int rockIndex = index; rockIndex < index + 2; rockIndex++) {
+            var point = path.get(rockIndex);
+
+            TileObject object = null;
+            var tile = Rs2GameObject.getTiles(3).stream()
+                    .filter(x -> x.getWorldLocation().equals(point))
+                    .findFirst().orElse(null);
+
+            if (tile != null)
+                object = Rs2GameObject.getGameObject(point);
+
+            if (object == null) continue;
+
+            if (object.getId() == ObjectID.ROCKFALL || object.getId() == ObjectID.ROCKFALL_26680) {
+                Rs2GameObject.interact(object, "mine");
+                return sleepUntil(() -> Rs2GameObject.getGameObject(point) == null);
+            }
+        }
+        
+        return false;
     }
 
     private static boolean handleDoors(List<WorldPoint> path, int index) {
@@ -1324,6 +1373,9 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
         
         // Handle Brimhaven Dungeon Entrance
         if (tileObject.getId() == 20877) {
+            if (Rs2Player.isMoving()) {
+                Rs2Player.waitForWalking();
+            }
             Rs2Dialogue.sleepUntilHasQuestion("Pay 875 coins to enter?");
             Rs2Dialogue.clickOption("Yes");
             sleepUntil(() -> Rs2Player.getWorldLocation().equals(transport.getDestination()));
@@ -1331,7 +1383,23 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
         }
         // Handle Brimhaven Dungeon Stepping Stones
         if (tileObject.getId() == ObjectID.STEPPING_STONE_21738 || tileObject.getId() == ObjectID.STEPPING_STONE_21739) {
-            Rs2Player.waitForAnimation(4200);
+            Rs2Player.waitForAnimation(600 * 7);
+            return true;
+        }
+        
+        // Handle Morte Myre Cave Agility Shortcut
+        if (tileObject.getId() == ObjectID.CAVE_ENTRANCE_16308) {
+            Rs2Player.waitForAnimation((600 * 4 ) + 300);
+            return true;
+        }
+        
+        // Handle Crash Site Cavern Gate
+        if (tileObject.getId() == 28807 && transport.getOrigin().equals(new WorldPoint(2435,3519, 0))) {
+            if (Rs2Player.isMoving()) {
+                Rs2Player.waitForWalking();
+            }
+            Rs2Dialogue.sleepUntilInDialogue();
+            Rs2Dialogue.clickOption("yes");
             return true;
         }
         return false;
